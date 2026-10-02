@@ -2,7 +2,9 @@ package Vibol.SEN.meetingManagements.controller;
 
 import Vibol.SEN.meetingManagements.dto.UserCreateRequest;
 import Vibol.SEN.meetingManagements.dto.UserDTO;
+import Vibol.SEN.meetingManagements.dto.UserUpdateRequest;
 import Vibol.SEN.meetingManagements.model.enums.UserRole;
+import Vibol.SEN.meetingManagements.model.enums.UserStatus;
 import Vibol.SEN.meetingManagements.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,18 @@ public class UserController {
     @PostMapping
     public ResponseEntity<UserDTO> createUser(@Valid @RequestBody UserCreateRequest request) {
         return new ResponseEntity<>(userService.createUser(request), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateRequest request) {
+        return ResponseEntity.ok(userService.updateUser(id, request));
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<UserDTO> updateUserStatus(
+            @PathVariable Long id,
+            @RequestParam UserStatus status) {
+        return ResponseEntity.ok(userService.updateStatus(id, status));
     }
 
     @DeleteMapping("/{id}")

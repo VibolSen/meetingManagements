@@ -1,6 +1,7 @@
 package Vibol.SEN.meetingManagements.model;
 
 import Vibol.SEN.meetingManagements.model.enums.UserRole;
+import Vibol.SEN.meetingManagements.model.enums.UserStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
@@ -37,10 +38,21 @@ public class User {
     @Column(name = "email", nullable = false, unique = true, length = 150)
     private String email;
 
+    @Column(name = "password", length = 255)
+    private String password;
+
     @NotNull(message = "User role is required")
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 50)
     private UserRole role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 30)
+    @Builder.Default
+    private UserStatus status = UserStatus.ACTIVE;
+
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")

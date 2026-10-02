@@ -13,7 +13,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserCreateRequest {
+public class UserUpdateRequest {
 
     @NotBlank(message = "User name is required")
     @Size(max = 150, message = "User name cannot exceed 150 characters")

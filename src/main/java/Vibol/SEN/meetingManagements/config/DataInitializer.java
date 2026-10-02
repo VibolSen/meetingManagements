@@ -20,6 +20,7 @@ public class DataInitializer implements CommandLineRunner {
     private final RoomRepository roomRepository;
     private final MaterialRepository materialRepository;
     private final StaffRepository staffRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) {
@@ -44,31 +45,50 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void seedUsers() {
-        if (userRepository.count() == 0) {
-            Department itDept = departmentRepository.findByName("Information Technology").orElse(null);
-            Department hrDept = departmentRepository.findByName("Human Resources").orElse(null);
+        Department itDept = departmentRepository.findByName("Information Technology").orElse(null);
+        Department hrDept = departmentRepository.findByName("Human Resources").orElse(null);
 
-            userRepository.saveAll(List.of(
-                    User.builder()
-                            .name("System Administrator")
-                            .email("admin@meeting.com")
+        // Ensure default Admin Vibol SEN exists with BCrypt password
+        userRepository.findByEmail("vibolsen2002@gmail.com").ifPresentOrElse(
+                admin -> {
+                    admin.setName("Vibol SEN");
+                    if (admin.getPassword() == null || !admin.getPassword().startsWith("$2a$")) {
+                        admin.setPassword(passwordEncoder.encode("Vibol@2020"));
+                    }
+                    admin.setRole(UserRole.ADMIN);
+                    if (admin.getDepartment() == null) admin.setDepartment(itDept);
+                    userRepository.save(admin);
+                },
+                () -> {
+                    userRepository.save(User.builder()
+                            .name("Vibol SEN")
+                            .email("vibolsen2002@gmail.com")
+                            .password(passwordEncoder.encode("Vibol@2020"))
                             .role(UserRole.ADMIN)
                             .department(itDept)
-                            .build(),
+                            .build());
+                    log.info("Default Admin Vibol SEN seeded with BCrypt hash.");
+                }
+        );
+
+        if (userRepository.count() <= 1) {
+            userRepository.saveAll(List.of(
                     User.builder()
                             .name("Meeting Organizer")
                             .email("organizer@meeting.com")
+                            .password(passwordEncoder.encode("Organizer@2020"))
                             .role(UserRole.ORGANIZER)
                             .department(hrDept)
                             .build(),
                     User.builder()
                             .name("Alice Johnson")
                             .email("alice@meeting.com")
+                            .password(passwordEncoder.encode("Alice@2020"))
                             .role(UserRole.EMPLOYEE)
                             .department(itDept)
                             .build()
             ));
-            log.info("Default users seeded.");
+            log.info("Default users seeded with BCrypt hashes.");
         }
     }
 

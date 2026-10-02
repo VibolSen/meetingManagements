@@ -66,9 +66,9 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**", "/error").permitAll()
 
                         // Role-Based Endpoints: Admin Only operations
-                        .requestMatchers(HttpMethod.POST, "/api/rooms/**", "/api/materials/**", "/api/staff/**", "/api/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/rooms/**", "/api/materials/**", "/api/staff/**", "/api/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/rooms/**", "/api/materials/**", "/api/staff/**", "/api/users/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/rooms/**", "/api/materials/**", "/api/staff/**", "/api/users/**", "/api/departments/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/rooms/**", "/api/materials/**", "/api/staff/**", "/api/users/**", "/api/departments/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/rooms/**", "/api/materials/**", "/api/staff/**", "/api/users/**", "/api/departments/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/meetings/*/approve", "/api/users/**").hasRole("ADMIN")
 
                         // Role-Based Endpoints: Organizer & Admin operations

@@ -15,4 +15,9 @@ public class DepartmentDTO {
     @NotBlank(message = "Department name is required")
     @Size(max = 100, message = "Department name cannot exceed 100 characters")
     private String name;
+
+    @Size(max = 255, message = "Description cannot exceed 255 characters")
+    private String description;
+
+    private Integer memberCount;
 }

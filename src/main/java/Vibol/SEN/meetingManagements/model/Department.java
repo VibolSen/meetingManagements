@@ -28,8 +28,12 @@ public class Department {
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
+    @Size(max = 255, message = "Description cannot exceed 255 characters")
+    @Column(name = "description", length = 255)
+    private String description;
+
     @JsonIgnore
-    @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "department", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY)
     @Builder.Default
     private List<User> users = new ArrayList<>();
 }

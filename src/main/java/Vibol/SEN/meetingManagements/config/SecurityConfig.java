@@ -62,7 +62,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/system/**").permitAll()
                         .requestMatchers("/actuator/**", "/error").permitAll()
 
                         // Role-Based Endpoints: Admin Only operations

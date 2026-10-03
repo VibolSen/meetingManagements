@@ -20,6 +20,7 @@ public class DataInitializer implements CommandLineRunner {
     private final RoomRepository roomRepository;
     private final MaterialRepository materialRepository;
     private final StaffRepository staffRepository;
+    private final AuditLogRepository auditLogRepository;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Override
@@ -29,6 +30,7 @@ public class DataInitializer implements CommandLineRunner {
         seedRooms();
         seedMaterials();
         seedStaff();
+        seedAuditLogs();
         log.info("Initial database seeding check completed.");
     }
 
@@ -180,6 +182,79 @@ public class DataInitializer implements CommandLineRunner {
                             .build()
             ));
             log.info("Default support staff seeded.");
+        }
+    }
+
+    private void seedAuditLogs() {
+        if (auditLogRepository.count() == 0) {
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            auditLogRepository.saveAll(List.of(
+                    AuditLog.builder()
+                            .actorName("System Engine")
+                            .actorEmail("system@meeting.internal")
+                            .actionType(AuditActionType.CREATE)
+                            .entityType(AuditEntityType.SYSTEM)
+                            .entityName("MMS Application Core")
+                            .details("Initialized Meeting Management System database schemas and default departments")
+                            .ipAddress("127.0.0.1")
+                            .createdAt(now.minusHours(48))
+                            .build(),
+                    AuditLog.builder()
+                            .actorName("Vibol SEN")
+                            .actorEmail("vibolsen2002@gmail.com")
+                            .actionType(AuditActionType.LOGIN)
+                            .entityType(AuditEntityType.USER)
+                            .entityName("Administrator Session")
+                            .details("SuperAdmin authentication via Spring Boot Security JWT token")
+                            .ipAddress("192.168.1.105")
+                            .createdAt(now.minusHours(36))
+                            .build(),
+                    AuditLog.builder()
+                            .actorName("Vibol SEN")
+                            .actorEmail("vibolsen2002@gmail.com")
+                            .actionType(AuditActionType.CREATE)
+                            .entityType(AuditEntityType.ROOM)
+                            .entityId(1L)
+                            .entityName("Executive Boardroom A")
+                            .details("Configured high-capacity facility (20 pax) with 4K Video Bar and AV matrix")
+                            .ipAddress("192.168.1.105")
+                            .createdAt(now.minusHours(24))
+                            .build(),
+                    AuditLog.builder()
+                            .actorName("Meeting Organizer")
+                            .actorEmail("organizer@meeting.com")
+                            .actionType(AuditActionType.CREATE)
+                            .entityType(AuditEntityType.MEETING)
+                            .entityId(101L)
+                            .entityName("Q4 Strategic Planning")
+                            .details("Requested Executive Boardroom A with 22 attendees; submitted for Admin approval")
+                            .ipAddress("192.168.1.142")
+                            .createdAt(now.minusHours(12))
+                            .build(),
+                    AuditLog.builder()
+                            .actorName("Vibol SEN")
+                            .actorEmail("vibolsen2002@gmail.com")
+                            .actionType(AuditActionType.APPROVE)
+                            .entityType(AuditEntityType.MEETING)
+                            .entityId(101L)
+                            .entityName("Q4 Strategic Planning")
+                            .details("Approved boardroom capacity exception for executive stakeholder alignment")
+                            .ipAddress("192.168.1.105")
+                            .createdAt(now.minusHours(10))
+                            .build(),
+                    AuditLog.builder()
+                            .actorName("Alice Johnson")
+                            .actorEmail("alice@meeting.com")
+                            .actionType(AuditActionType.ROLE_CHANGE)
+                            .entityType(AuditEntityType.USER)
+                            .entityId(3L)
+                            .entityName("Alice Johnson")
+                            .details("Assigned Standard Employee role in Marketing & Business Development")
+                            .ipAddress("192.168.1.180")
+                            .createdAt(now.minusHours(6))
+                            .build()
+            ));
+            log.info("Default audit logs seeded.");
         }
     }
 }

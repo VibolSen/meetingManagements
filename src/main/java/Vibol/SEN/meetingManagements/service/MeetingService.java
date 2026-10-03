@@ -34,6 +34,7 @@ public class MeetingService {
     private final NotificationService notificationService;
     private final UserService userService;
     private final RoomService roomService;
+    private final AuditLogService auditLogService;
 
     @Transactional(readOnly = true)
     public List<MeetingResponse> getAllMeetings() {
@@ -167,6 +168,16 @@ public class MeetingService {
                 : "Meeting requested (pending approval): '" + savedMeeting.getTitle() + "'";
         notificationService.broadcastMeetingNotification(savedMeeting, NotificationType.CONFIRMATION, msg);
 
+        // 7. Record Audit Log
+        auditLogService.recordUserAction(
+                organizer,
+                AuditActionType.CREATE,
+                AuditEntityType.MEETING,
+                savedMeeting.getMeetingId(),
+                savedMeeting.getTitle(),
+                "Booked room " + room.getName() + " with " + initialStatus + " status"
+        );
+
         return mapToResponse(savedMeeting);
     }
 
@@ -202,6 +213,13 @@ public class MeetingService {
 
         Meeting updated = meetingRepository.save(meeting);
         notificationService.broadcastMeetingNotification(updated, NotificationType.CHANGE, "Meeting details updated: '" + updated.getTitle() + "'");
+        auditLogService.recordSystemAction(
+                AuditActionType.UPDATE,
+                AuditEntityType.MEETING,
+                updated.getMeetingId(),
+                updated.getTitle(),
+                "Updated schedule or details for meeting in room " + updated.getRoom().getName()
+        );
         return mapToResponse(updated);
     }
 
@@ -216,6 +234,13 @@ public class MeetingService {
         meeting.setStatus(MeetingStatus.CONFIRMED);
         Meeting approved = meetingRepository.save(meeting);
         notificationService.broadcastMeetingNotification(approved, NotificationType.CONFIRMATION, "Meeting approved: '" + approved.getTitle() + "'");
+        auditLogService.recordSystemAction(
+                AuditActionType.APPROVE,
+                AuditEntityType.MEETING,
+                approved.getMeetingId(),
+                approved.getTitle(),
+                "Administrator approved high-capacity boardroom booking"
+        );
         return mapToResponse(approved);
     }
 
@@ -238,6 +263,13 @@ public class MeetingService {
         Meeting cancelled = meetingRepository.save(meeting);
         String cancelMsg = "Meeting cancelled: '" + cancelled.getTitle() + "'" + (reason != null ? " (Reason: " + reason + ")" : "");
         notificationService.broadcastMeetingNotification(cancelled, NotificationType.CANCELLATION, cancelMsg);
+        auditLogService.recordSystemAction(
+                AuditActionType.CANCEL,
+                AuditEntityType.MEETING,
+                cancelled.getMeetingId(),
+                cancelled.getTitle(),
+                "Meeting cancelled. Reason: " + (reason != null ? reason : "No reason specified")
+        );
 
         return mapToResponse(cancelled);
     }

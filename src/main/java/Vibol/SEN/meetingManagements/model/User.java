@@ -1,5 +1,6 @@
 package Vibol.SEN.meetingManagements.model;
 
+import Vibol.SEN.meetingManagements.model.enums.BookingAccessLevel;
 import Vibol.SEN.meetingManagements.model.enums.UserRole;
 import Vibol.SEN.meetingManagements.model.enums.UserStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -51,20 +52,53 @@ public class User {
     @Builder.Default
     private UserStatus status = UserStatus.ACTIVE;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "booking_access", length = 30)
+    @Builder.Default
+    private BookingAccessLevel bookingAccess = BookingAccessLevel.FULL_ACCESS;
+
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
+
+    @Column(name = "phone", length = 50)
+    private String phone;
+
+    @Column(name = "job_title", length = 150)
+    private String jobTitle;
+
+    @org.hibernate.annotations.CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private java.time.LocalDateTime createdAt;
+
+    @org.hibernate.annotations.UpdateTimestamp
+    @Column(name = "updated_at")
+    private java.time.LocalDateTime updatedAt;
+
+    @Column(name = "telegram_chat_id", length = 100)
+    private String telegramChatId;
+
+    @Column(name = "telegram_username", length = 100)
+    private String telegramUsername;
+
+    @Column(name = "telegram_reminder_minutes")
+    @Builder.Default
+    private Integer telegramReminderMinutes = 10;
+
+    @Column(name = "telegram_notifications_enabled")
+    @Builder.Default
+    private Boolean telegramNotificationsEnabled = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
     private Department department;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "organizer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "organizer", fetch = FetchType.LAZY)
     @Builder.Default
     private List<Meeting> organizedMeetings = new ArrayList<>();
 
     @JsonIgnore
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     @Builder.Default
     private List<MeetingAttendee> meetingAttendances = new ArrayList<>();
 }

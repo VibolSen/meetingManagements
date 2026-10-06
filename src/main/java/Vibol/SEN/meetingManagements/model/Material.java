@@ -42,7 +42,7 @@ public class Material {
     private Integer quantityAvailable;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "material", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "material", fetch = FetchType.LAZY)
     @Builder.Default
     private List<MeetingMaterial> meetingMaterials = new ArrayList<>();
 }

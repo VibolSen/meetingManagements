@@ -47,7 +47,7 @@ public class Room {
     private RoomStatus status;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "room", fetch = FetchType.LAZY)
     @Builder.Default
     private List<Meeting> meetings = new ArrayList<>();
 }

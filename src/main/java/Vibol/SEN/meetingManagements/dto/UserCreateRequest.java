@@ -29,7 +29,13 @@ public class UserCreateRequest {
 
     private UserStatus status;
 
+    private Vibol.SEN.meetingManagements.model.enums.BookingAccessLevel bookingAccess;
+
     private String avatarUrl;
+
+    private String phone;
+
+    private String jobTitle;
 
     private String password;
 

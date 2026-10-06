@@ -53,6 +53,13 @@ public class UserController {
         return ResponseEntity.ok(userService.updateStatus(id, status));
     }
 
+    @PatchMapping("/{id}/booking-access")
+    public ResponseEntity<UserDTO> updateBookingAccess(
+            @PathVariable Long id,
+            @RequestParam Vibol.SEN.meetingManagements.model.enums.BookingAccessLevel access) {
+        return ResponseEntity.ok(userService.updateBookingAccess(id, access));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);

@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final TelegramService telegramService;
 
     public NotificationResponse createNotification(Meeting meeting, User recipient, NotificationType type, String message) {
         Notification notification = Notification.builder()
@@ -36,7 +37,15 @@ public class NotificationService {
                 .build();
 
         Notification saved = notificationRepository.save(notification);
-        log.info("Notification [{}] sent to user {}: {}", type, recipient.getEmail(), message);
+        log.info("Notification [{}] sent to user {}: {}", type, recipient != null ? recipient.getEmail() : "N/A", message);
+
+        // Multi-Channel Dispatch: Forward to Telegram if recipient has linked Chat ID
+        if (recipient != null && Boolean.TRUE.equals(recipient.getTelegramNotificationsEnabled())
+                && recipient.getTelegramChatId() != null && !recipient.getTelegramChatId().isBlank()) {
+            Integer leadMinutes = recipient.getTelegramReminderMinutes() != null ? recipient.getTelegramReminderMinutes() : 10;
+            telegramService.sendDirectNotification(recipient.getTelegramChatId(), type, meeting, leadMinutes, message);
+        }
+
         return mapToResponse(saved);
     }
 
@@ -67,6 +76,12 @@ public class NotificationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found with ID: " + notificationId));
         notification.setStatus(status);
         notificationRepository.save(notification);
+    }
+
+    public void markAllAsRead(Long userId) {
+        List<Notification> unreadList = notificationRepository.findByRecipient_UserIdAndStatusNot(userId, NotificationStatus.READ);
+        unreadList.forEach(n -> n.setStatus(NotificationStatus.READ));
+        notificationRepository.saveAll(unreadList);
     }
 
     public NotificationResponse mapToResponse(Notification notification) {

@@ -10,6 +10,35 @@
       "type": "java.lang.Long",
       "description": "Expiration duration in milliseconds for generated JWT tokens.",
       "defaultValue": 86400000
+    },
+    {
+      "name": "telegram.bot.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Master switch to enable or disable automated Telegram bot notifications.",
+      "defaultValue": true
+    },
+    {
+      "name": "telegram.bot.token",
+      "type": "java.lang.String",
+      "description": "HTTP API authentication token provided by @BotFather for the MMS Telegram bot."
+    },
+    {
+      "name": "telegram.bot.username",
+      "type": "java.lang.String",
+      "description": "Telegram bot handle username (without @ prefix).",
+      "defaultValue": "MMS_Meeting_Alert_Bot"
+    },
+    {
+      "name": "telegram.bot.default-chat-id",
+      "type": "java.lang.String",
+      "description": "Default administrator Telegram Chat ID for administrative alerts and fallback test delivery.",
+      "defaultValue": "1035574371"
+    },
+    {
+      "name": "telegram.reminder.default-minutes",
+      "type": "java.lang.Integer",
+      "description": "Default advance reminder lead time in minutes before meeting start time.",
+      "defaultValue": 10
     }
   ]
 }

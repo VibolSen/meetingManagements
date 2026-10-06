@@ -7,6 +7,7 @@ import Vibol.SEN.meetingManagements.exception.BadRequestException;
 import Vibol.SEN.meetingManagements.exception.ResourceNotFoundException;
 import Vibol.SEN.meetingManagements.model.Department;
 import Vibol.SEN.meetingManagements.model.User;
+import Vibol.SEN.meetingManagements.model.enums.BookingAccessLevel;
 import Vibol.SEN.meetingManagements.model.enums.UserRole;
 import Vibol.SEN.meetingManagements.model.enums.UserStatus;
 import Vibol.SEN.meetingManagements.repository.DepartmentRepository;
@@ -67,6 +68,9 @@ public class UserService {
         }
 
         UserStatus status = request.getStatus() != null ? request.getStatus() : UserStatus.ACTIVE;
+        Vibol.SEN.meetingManagements.model.enums.BookingAccessLevel access = request.getBookingAccess() != null
+                ? request.getBookingAccess()
+                : Vibol.SEN.meetingManagements.model.enums.BookingAccessLevel.FULL_ACCESS;
 
         User user = User.builder()
                 .name(request.getName().trim())
@@ -74,7 +78,10 @@ public class UserService {
                 .password(encodedPassword)
                 .role(request.getRole())
                 .status(status)
+                .bookingAccess(access)
                 .avatarUrl(request.getAvatarUrl() != null ? request.getAvatarUrl().trim() : null)
+                .phone(request.getPhone() != null && !request.getPhone().trim().isEmpty() ? request.getPhone().trim() : null)
+                .jobTitle(request.getJobTitle() != null && !request.getJobTitle().trim().isEmpty() ? request.getJobTitle().trim() : null)
                 .department(department)
                 .build();
 
@@ -108,22 +115,76 @@ public class UserService {
             user.setStatus(request.getStatus());
         }
 
+        if (request.getBookingAccess() != null) {
+            user.setBookingAccess(request.getBookingAccess());
+        }
+
         if (request.getAvatarUrl() != null) {
             user.setAvatarUrl(request.getAvatarUrl().trim());
+        }
+
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone().trim().isEmpty() ? null : request.getPhone().trim());
+        }
+
+        if (request.getJobTitle() != null) {
+            user.setJobTitle(request.getJobTitle().trim().isEmpty() ? null : request.getJobTitle().trim());
         }
 
         if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
             user.setPassword(passwordEncoder.encode(request.getPassword().trim()));
         }
 
+        if (request.getTelegramChatId() != null) {
+            user.setTelegramChatId(request.getTelegramChatId().trim());
+        }
+        if (request.getTelegramUsername() != null) {
+            user.setTelegramUsername(request.getTelegramUsername().trim());
+        }
+        if (request.getTelegramReminderMinutes() != null) {
+            user.setTelegramReminderMinutes(request.getTelegramReminderMinutes());
+        }
+        if (request.getTelegramNotificationsEnabled() != null) {
+            user.setTelegramNotificationsEnabled(request.getTelegramNotificationsEnabled());
+        }
+
         User updated = userRepository.save(user);
         return mapToDTO(updated);
+    }
+
+    public UserDTO updateTelegramSettings(Long id, Vibol.SEN.meetingManagements.dto.TelegramSettingsRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + id));
+
+        if (request.getTelegramChatId() != null) {
+            user.setTelegramChatId(request.getTelegramChatId().trim());
+        }
+        if (request.getTelegramUsername() != null) {
+            user.setTelegramUsername(request.getTelegramUsername().trim());
+        }
+        if (request.getTelegramReminderMinutes() != null) {
+            user.setTelegramReminderMinutes(request.getTelegramReminderMinutes());
+        }
+        if (request.getTelegramNotificationsEnabled() != null) {
+            user.setTelegramNotificationsEnabled(request.getTelegramNotificationsEnabled());
+        }
+
+        User saved = userRepository.save(user);
+        return mapToDTO(saved);
     }
 
     public UserDTO updateStatus(Long id, UserStatus status) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + id));
         user.setStatus(status);
+        User saved = userRepository.save(user);
+        return mapToDTO(saved);
+    }
+
+    public UserDTO updateBookingAccess(Long id, BookingAccessLevel access) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + id));
+        user.setBookingAccess(access != null ? access : BookingAccessLevel.FULL_ACCESS);
         User saved = userRepository.save(user);
         return mapToDTO(saved);
     }
@@ -142,9 +203,18 @@ public class UserService {
                 .email(user.getEmail())
                 .role(user.getRole())
                 .status(user.getStatus() != null ? user.getStatus() : UserStatus.ACTIVE)
+                .bookingAccess(user.getBookingAccess() != null ? user.getBookingAccess() : BookingAccessLevel.FULL_ACCESS)
                 .avatarUrl(user.getAvatarUrl())
+                .phone(user.getPhone())
+                .jobTitle(user.getJobTitle())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
                 .departmentId(user.getDepartment() != null ? user.getDepartment().getDepartmentId() : null)
                 .departmentName(user.getDepartment() != null ? user.getDepartment().getName() : null)
+                .telegramChatId(user.getTelegramChatId())
+                .telegramUsername(user.getTelegramUsername())
+                .telegramReminderMinutes(user.getTelegramReminderMinutes() != null ? user.getTelegramReminderMinutes() : 10)
+                .telegramNotificationsEnabled(user.getTelegramNotificationsEnabled() != null ? user.getTelegramNotificationsEnabled() : true)
                 .build();
     }
 }

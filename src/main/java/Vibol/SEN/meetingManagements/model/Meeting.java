@@ -69,22 +69,22 @@ public class Meeting {
     private LocalDateTime updatedAt;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "meeting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "meeting", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     @Builder.Default
     private List<MeetingAttendee> attendees = new ArrayList<>();
 
     @JsonIgnore
-    @OneToMany(mappedBy = "meeting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "meeting", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     @Builder.Default
     private List<MeetingMaterial> materials = new ArrayList<>();
 
     @JsonIgnore
-    @OneToMany(mappedBy = "meeting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "meeting", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     @Builder.Default
     private List<MeetingStaff> staffAssignments = new ArrayList<>();
 
     @JsonIgnore
-    @OneToMany(mappedBy = "meeting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "meeting", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     @Builder.Default
     private List<Notification> notifications = new ArrayList<>();
 }

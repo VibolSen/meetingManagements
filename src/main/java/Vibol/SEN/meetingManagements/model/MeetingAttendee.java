@@ -32,5 +32,5 @@ public class MeetingAttendee {
     @Enumerated(EnumType.STRING)
     @Column(name = "response_status", length = 30)
     @Builder.Default
-    private AttendeeResponseStatus responseStatus = AttendeeResponseStatus.PENDING;
+    private AttendeeResponseStatus responseStatus = AttendeeResponseStatus.ACCEPTED;
 }

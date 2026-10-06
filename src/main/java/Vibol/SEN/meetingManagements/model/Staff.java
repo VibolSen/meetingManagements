@@ -47,7 +47,7 @@ public class Staff {
     private StaffAvailability availabilityStatus = StaffAvailability.AVAILABLE;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "staff", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "staff", fetch = FetchType.LAZY)
     @Builder.Default
     private List<MeetingStaff> meetingStaffList = new ArrayList<>();
 }

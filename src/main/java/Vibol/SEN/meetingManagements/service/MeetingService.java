@@ -12,8 +12,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,6 +40,7 @@ public class MeetingService {
     private final UserService userService;
     private final RoomService roomService;
     private final AuditLogService auditLogService;
+    private final SystemSettingService systemSettingService;
 
     @Transactional(readOnly = true)
     public List<MeetingResponse> getAllMeetings() {
@@ -96,8 +102,59 @@ public class MeetingService {
         User organizer = userRepository.findById(request.getOrganizerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Organizer not found with ID: " + request.getOrganizerId()));
 
-        // 2. Approval workflow: High-capacity rooms (>= 20) require approval, others auto-confirm
-        MeetingStatus initialStatus = (room.getCapacity() >= 20) ? MeetingStatus.PENDING : MeetingStatus.CONFIRMED;
+        // Individual Staff Access Control: Check if user is restricted to View Only (e.g. probation staff, intern)
+        if (organizer.getBookingAccess() == BookingAccessLevel.VIEW_ONLY) {
+            throw new BadRequestException("Your account is currently set to 'View Only' access (e.g. probationary period) and is restricted from booking meeting rooms. Please contact your administrator.");
+        }
+
+        // Dynamic Role & Policy Validations
+        if (organizer.getRole() == UserRole.EMPLOYEE && !systemSettingService.getBoolean("role.employee.can_book", true)) {
+            throw new BadRequestException("Meeting reservation by employees is currently disabled by administrative policy.");
+        }
+
+        int maxDays = systemSettingService.getInt("booking.max_advance_days", 60);
+        if (request.getStartTime().isAfter(LocalDateTime.now().plusDays(maxDays))) {
+            throw new BadRequestException("Reservations cannot be made more than " + maxDays + " days in advance.");
+        }
+
+        boolean allowWeekend = systemSettingService.getBoolean("booking.allow_weekend_booking", false);
+        DayOfWeek day = request.getStartTime().getDayOfWeek();
+        if (!allowWeekend && (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY)) {
+            throw new BadRequestException("Weekend reservations are not allowed under current facility policy.");
+        }
+
+        String startHourStr = systemSettingService.getString("booking.operating_hours_start", "08:00");
+        String endHourStr = systemSettingService.getString("booking.operating_hours_end", "18:00");
+        try {
+            LocalTime openingTime = LocalTime.parse(startHourStr);
+            LocalTime closingTime = LocalTime.parse(endHourStr);
+            LocalTime meetingStart = request.getStartTime().toLocalTime();
+            LocalTime meetingEnd = request.getEndTime().toLocalTime();
+            if (meetingStart.isBefore(openingTime) || meetingEnd.isAfter(closingTime)) {
+                throw new BadRequestException("Meeting must fall within facility operating hours (" + startHourStr + " - " + endHourStr + ").");
+            }
+        } catch (DateTimeParseException ignored) {}
+
+        if (organizer.getRole() == UserRole.EMPLOYEE && request.getMaterials() != null && !request.getMaterials().isEmpty()) {
+            boolean canRequestMaterials = systemSettingService.getBoolean("role.employee.can_request_materials", true);
+            if (!canRequestMaterials) {
+                throw new BadRequestException("Material requests by employees are disabled by policy.");
+            }
+        }
+
+        // 2. Dynamic Approval workflow: Threshold-based or role-based requirement
+        int threshold = systemSettingService.getInt("booking.approval_threshold_capacity", 20);
+        boolean employeeRequireApproval = systemSettingService.getBoolean("role.employee.require_approval", false);
+        boolean organizerRequireApproval = systemSettingService.getBoolean("role.organizer.require_approval", false);
+
+        boolean requiresApproval = (room.getCapacity() >= threshold);
+        if (organizer.getRole() == UserRole.EMPLOYEE && employeeRequireApproval) {
+            requiresApproval = true;
+        } else if (organizer.getRole() == UserRole.ORGANIZER && organizerRequireApproval) {
+            requiresApproval = true;
+        }
+
+        MeetingStatus initialStatus = requiresApproval ? MeetingStatus.PENDING : MeetingStatus.CONFIRMED;
 
         Meeting meeting = Meeting.builder()
                 .title(request.getTitle())
@@ -111,7 +168,12 @@ public class MeetingService {
 
         Meeting savedMeeting = meetingRepository.save(meeting);
 
-        // 3. Attach attendees
+        // 3. Attach attendees with dynamic acceptance mode
+        String attendeeMode = systemSettingService.getString("booking.attendee_acceptance_mode", "AUTO_ACCEPT");
+        AttendeeResponseStatus initialAttendeeStatus = "AUTO_ACCEPT".equalsIgnoreCase(attendeeMode)
+                ? AttendeeResponseStatus.ACCEPTED
+                : AttendeeResponseStatus.PENDING;
+
         if (request.getAttendeeIds() != null) {
             for (Long userId : request.getAttendeeIds()) {
                 User attendeeUser = userRepository.findById(userId)
@@ -121,10 +183,10 @@ public class MeetingService {
                         .id(new MeetingAttendeeId(savedMeeting.getMeetingId(), attendeeUser.getUserId()))
                         .meeting(savedMeeting)
                         .user(attendeeUser)
-                        .responseStatus(AttendeeResponseStatus.PENDING)
+                        .responseStatus(initialAttendeeStatus)
                         .build();
-                attendeeRepository.save(attendee);
-                savedMeeting.getAttendees().add(attendee);
+                MeetingAttendee savedAttendee = attendeeRepository.save(attendee);
+                savedMeeting.getAttendees().add(savedAttendee);
             }
         }
 
@@ -140,8 +202,8 @@ public class MeetingService {
                         .material(material)
                         .quantityRequested(matReq.getQuantityRequested())
                         .build();
-                meetingMaterialRepository.save(mm);
-                savedMeeting.getMaterials().add(mm);
+                MeetingMaterial savedMm = meetingMaterialRepository.save(mm);
+                savedMeeting.getMaterials().add(savedMm);
             }
         }
 
@@ -157,8 +219,8 @@ public class MeetingService {
                         .staff(staff)
                         .assignedRole(staffReq.getAssignedRole() != null ? staffReq.getAssignedRole() : staff.getRole().name())
                         .build();
-                meetingStaffRepository.save(ms);
-                savedMeeting.getStaffAssignments().add(ms);
+                MeetingStaff savedMs = meetingStaffRepository.save(ms);
+                savedMeeting.getStaffAssignments().add(savedMs);
             }
         }
 
@@ -209,6 +271,52 @@ public class MeetingService {
 
         if (request.getStatus() != null) {
             meeting.setStatus(request.getStatus());
+        }
+
+        // Synchronize attendees if provided
+        if (request.getAttendeeIds() != null) {
+            List<MeetingAttendee> currentAttendees = attendeeRepository.findById_MeetingId(id);
+            Set<Long> targetUserIds = new HashSet<>(request.getAttendeeIds());
+
+            // Remove attendees no longer in the list
+            for (MeetingAttendee current : currentAttendees) {
+                if (!targetUserIds.contains(current.getUser().getUserId())) {
+                    attendeeRepository.delete(current);
+                }
+            }
+
+            Set<Long> existingUserIds = currentAttendees.stream()
+                    .map(a -> a.getUser().getUserId())
+                    .collect(Collectors.toSet());
+
+            // Add newly invited attendees
+            for (Long userId : targetUserIds) {
+                if (!existingUserIds.contains(userId)) {
+                    User attendeeUser = userRepository.findById(userId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Attendee user not found with ID: " + userId));
+
+                    String attendeeMode = systemSettingService.getString("booking.attendee_acceptance_mode", "AUTO_ACCEPT");
+                    AttendeeResponseStatus attendeeStatus = "AUTO_ACCEPT".equalsIgnoreCase(attendeeMode)
+                            ? AttendeeResponseStatus.ACCEPTED
+                            : AttendeeResponseStatus.PENDING;
+
+                    MeetingAttendee attendee = MeetingAttendee.builder()
+                            .id(new MeetingAttendeeId(meeting.getMeetingId(), attendeeUser.getUserId()))
+                            .meeting(meeting)
+                            .user(attendeeUser)
+                            .responseStatus(attendeeStatus)
+                            .build();
+                    attendeeRepository.save(attendee);
+
+                    // Notify newly invited attendee
+                    notificationService.createNotification(
+                            meeting,
+                            attendeeUser,
+                            NotificationType.CONFIRMATION,
+                            "You have been invited to meeting: '" + meeting.getTitle() + "'"
+                    );
+                }
+            }
         }
 
         Meeting updated = meetingRepository.save(meeting);

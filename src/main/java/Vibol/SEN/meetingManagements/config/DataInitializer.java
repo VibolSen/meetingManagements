@@ -21,6 +21,8 @@ public class DataInitializer implements CommandLineRunner {
     private final MaterialRepository materialRepository;
     private final StaffRepository staffRepository;
     private final AuditLogRepository auditLogRepository;
+    private final NotificationTemplateRepository notificationTemplateRepository;
+    private final Vibol.SEN.meetingManagements.service.TemplateRenderService templateRenderService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Override
@@ -31,6 +33,7 @@ public class DataInitializer implements CommandLineRunner {
         seedMaterials();
         seedStaff();
         seedAuditLogs();
+        seedNotificationTemplates();
         log.info("Initial database seeding check completed.");
     }
 
@@ -50,7 +53,7 @@ public class DataInitializer implements CommandLineRunner {
         Department itDept = departmentRepository.findByName("Information Technology").orElse(null);
         Department hrDept = departmentRepository.findByName("Human Resources").orElse(null);
 
-        // Ensure default Admin Vibol SEN exists with BCrypt password
+        // Ensure default Admin Vibol SEN exists with BCrypt password and Telegram credentials
         userRepository.findByEmail("vibolsen2002@gmail.com").ifPresentOrElse(
                 admin -> {
                     admin.setName("Vibol SEN");
@@ -59,6 +62,18 @@ public class DataInitializer implements CommandLineRunner {
                     }
                     admin.setRole(UserRole.ADMIN);
                     if (admin.getDepartment() == null) admin.setDepartment(itDept);
+                    if (admin.getTelegramChatId() == null || admin.getTelegramChatId().isBlank()) {
+                        admin.setTelegramChatId("1035574371");
+                    }
+                    if (admin.getTelegramUsername() == null || admin.getTelegramUsername().isBlank()) {
+                        admin.setTelegramUsername("vibolsen");
+                    }
+                    if (admin.getTelegramReminderMinutes() == null) {
+                        admin.setTelegramReminderMinutes(10);
+                    }
+                    if (admin.getTelegramNotificationsEnabled() == null) {
+                        admin.setTelegramNotificationsEnabled(true);
+                    }
                     userRepository.save(admin);
                 },
                 () -> {
@@ -68,8 +83,12 @@ public class DataInitializer implements CommandLineRunner {
                             .password(passwordEncoder.encode("Vibol@2020"))
                             .role(UserRole.ADMIN)
                             .department(itDept)
+                            .telegramChatId("1035574371")
+                            .telegramUsername("vibolsen")
+                            .telegramReminderMinutes(10)
+                            .telegramNotificationsEnabled(true)
                             .build());
-                    log.info("Default Admin Vibol SEN seeded with BCrypt hash.");
+                    log.info("Default Admin Vibol SEN seeded with BCrypt hash and Telegram Chat ID.");
                 }
         );
 
@@ -255,6 +274,38 @@ public class DataInitializer implements CommandLineRunner {
                             .build()
             ));
             log.info("Default audit logs seeded.");
+        }
+    }
+
+    private void seedNotificationTemplates() {
+        if (notificationTemplateRepository.count() == 0) {
+            notificationTemplateRepository.saveAll(List.of(
+                    NotificationTemplate.builder()
+                            .type(NotificationType.REMINDER)
+                            .name("Pre-Meeting Countdown Reminder")
+                            .content(templateRenderService.getDefaultTemplate(NotificationType.REMINDER))
+                            .isCustomized(false)
+                            .build(),
+                    NotificationTemplate.builder()
+                            .type(NotificationType.CONFIRMATION)
+                            .name("Meeting Creation & Confirmation")
+                            .content(templateRenderService.getDefaultTemplate(NotificationType.CONFIRMATION))
+                            .isCustomized(false)
+                            .build(),
+                    NotificationTemplate.builder()
+                            .type(NotificationType.CHANGE)
+                            .name("Meeting Approval & Modification")
+                            .content(templateRenderService.getDefaultTemplate(NotificationType.CHANGE))
+                            .isCustomized(false)
+                            .build(),
+                    NotificationTemplate.builder()
+                            .type(NotificationType.CANCELLATION)
+                            .name("Meeting Cancellation")
+                            .content(templateRenderService.getDefaultTemplate(NotificationType.CANCELLATION))
+                            .isCustomized(false)
+                            .build()
+            ));
+            log.info("Default Telegram notification templates seeded.");
         }
     }
 }

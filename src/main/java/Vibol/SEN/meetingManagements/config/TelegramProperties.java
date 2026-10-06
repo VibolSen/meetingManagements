@@ -18,7 +18,7 @@ public class TelegramProperties {
     @Setter
     public static class Bot {
         private boolean enabled = true;
-        private String token = "8874617484:AAF2jAjzgGkxYla38mFlokCuKDS3bDpjxtY";
+        private String token = "";
         private String username = "MMS_Meeting_Alert_Bot";
         private String defaultChatId = "1035574371";
     }

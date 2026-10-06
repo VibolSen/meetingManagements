@@ -64,4 +64,27 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime
     );
+
+    @Query("SELECT m FROM Meeting m " +
+           "WHERE m.status = :status " +
+           "AND m.startTime <= :deadline " +
+           "AND m.endTime > :now " +
+           "AND (m.isCheckedIn IS NULL OR m.isCheckedIn = false)")
+    List<Meeting> findUncheckedMeetingsPastDeadline(
+            @Param("status") MeetingStatus status,
+            @Param("deadline") LocalDateTime deadline,
+            @Param("now") LocalDateTime now
+    );
+
+    @Query("SELECT m FROM Meeting m " +
+           "WHERE m.room.roomId = :roomId " +
+           "AND m.status != 'CANCELLED' " +
+           "AND m.startTime >= :startOfDay " +
+           "AND m.startTime < :endOfDay " +
+           "ORDER BY m.startTime ASC")
+    List<Meeting> findTodayScheduleForRoom(
+            @Param("roomId") Long roomId,
+            @Param("startOfDay") LocalDateTime startOfDay,
+            @Param("endOfDay") LocalDateTime endOfDay
+    );
 }

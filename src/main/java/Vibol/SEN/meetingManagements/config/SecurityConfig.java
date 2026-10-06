@@ -62,19 +62,19 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/**", "/api/system/**").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/system/**", "/api/rooms/*/display-status", "/api/rooms/*/kiosk", "/api/rooms/*/display-status/**").permitAll()
                         .requestMatchers("/actuator/**", "/error").permitAll()
 
                         // Role-Based Endpoints: Admin Only operations
                         .requestMatchers(HttpMethod.POST, "/api/rooms/**", "/api/materials/**", "/api/staff/**", "/api/users/**", "/api/departments/**", "/api/telegram/templates/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/rooms/**", "/api/materials/**", "/api/staff/**", "/api/users/**", "/api/departments/**", "/api/telegram/templates/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/rooms/**", "/api/materials/**", "/api/staff/**", "/api/users/**", "/api/departments/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/meetings/*/approve", "/api/users/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/meetings/*/approve", "/api/users/**", "/api/issues/*/status").hasRole("ADMIN")
 
                         // Role-Based Endpoints: Meeting booking and operations allowed for EMPLOYEE, ORGANIZER, and ADMIN
-                        .requestMatchers(HttpMethod.POST, "/api/meetings/**").hasAnyRole("EMPLOYEE", "ORGANIZER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/meetings/**", "/api/rooms/*/issues").hasAnyRole("EMPLOYEE", "ORGANIZER", "ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/meetings/**").hasAnyRole("EMPLOYEE", "ORGANIZER", "ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/meetings/*/cancel").hasAnyRole("EMPLOYEE", "ORGANIZER", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/meetings/*/cancel", "/api/meetings/*/check-in", "/api/meetings/*/end-early", "/api/meetings/*/attendee/*/rsvp").hasAnyRole("EMPLOYEE", "ORGANIZER", "ADMIN")
 
                         // All other API endpoints require authentication
                         .requestMatchers("/api/**").authenticated()

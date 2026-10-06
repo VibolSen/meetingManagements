@@ -60,6 +60,17 @@ public class Meeting {
     @Builder.Default
     private MeetingStatus status = MeetingStatus.PENDING;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "series_id")
+    private RecurringSeries recurringSeries;
+
+    @Column(name = "is_checked_in")
+    @Builder.Default
+    private Boolean isCheckedIn = false;
+
+    @Column(name = "checked_in_at")
+    private LocalDateTime checkedInAt;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -87,4 +98,18 @@ public class Meeting {
     @OneToMany(mappedBy = "meeting", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     @Builder.Default
     private List<Notification> notifications = new ArrayList<>();
+
+    @JsonIgnore
+    @OneToOne(mappedBy = "meeting", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    private MeetingMinutes minutes;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "meeting", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<ActionItem> actionItems = new ArrayList<>();
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "meeting", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<MeetingAttachment> attachments = new ArrayList<>();
 }

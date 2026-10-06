@@ -39,6 +39,18 @@
       "type": "java.lang.Integer",
       "description": "Default advance reminder lead time in minutes before meeting start time.",
       "defaultValue": 10
+    },
+    {
+      "name": "mail.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Master switch to enable or disable automated email notifications with iCalendar attachments.",
+      "defaultValue": false
+    },
+    {
+      "name": "mail.from",
+      "type": "java.lang.String",
+      "description": "Default sender email address used for outbound meeting invitation and cancellation emails.",
+      "defaultValue": "noreply@meetinghub.internal"
     }
   ]
 }

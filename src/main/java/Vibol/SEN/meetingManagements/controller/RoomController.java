@@ -20,6 +20,7 @@ import java.util.List;
 public class RoomController {
 
     private final RoomService roomService;
+    private final Vibol.SEN.meetingManagements.service.RoomDisplayService roomDisplayService;
 
     @GetMapping
     public ResponseEntity<List<RoomResponse>> getAllRooms() {
@@ -61,5 +62,10 @@ public class RoomController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
             @RequestParam(required = false) Integer minCapacity) {
         return ResponseEntity.ok(roomService.getAvailableRoomsForSlot(start, end, minCapacity));
+    }
+
+    @GetMapping("/{id}/display-status")
+    public ResponseEntity<Vibol.SEN.meetingManagements.dto.RoomDisplayStatusDTO> getRoomDisplayStatus(@PathVariable Long id) {
+        return ResponseEntity.ok(roomDisplayService.getRoomDisplayStatus(id));
     }
 }

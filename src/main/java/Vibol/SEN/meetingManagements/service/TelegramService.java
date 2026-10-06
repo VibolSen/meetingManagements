@@ -21,7 +21,7 @@ public class TelegramService {
 
     private final TemplateRenderService templateRenderService;
 
-    @Value("${telegram.bot.token:8874617484:AAF2jAjzgGkxYla38mFlokCuKDS3bDpjxtY}")
+    @Value("${telegram.bot.token:}")
     private String botToken;
 
     @Value("${telegram.bot.username:MMS_Meeting_Alert_Bot}")

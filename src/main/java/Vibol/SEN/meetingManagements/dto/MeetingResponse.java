@@ -1,6 +1,7 @@
 package Vibol.SEN.meetingManagements.dto;
 
 import Vibol.SEN.meetingManagements.model.enums.MeetingStatus;
+import Vibol.SEN.meetingManagements.model.enums.RecurrenceType;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -21,6 +22,11 @@ public class MeetingResponse {
     private LocalDateTime endTime;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Boolean isCheckedIn;
+    private LocalDateTime checkedInAt;
+
+    private Long seriesId;
+    private RecurrenceType recurrenceType;
 
     private UserDTO organizer;
     private RoomResponse room;

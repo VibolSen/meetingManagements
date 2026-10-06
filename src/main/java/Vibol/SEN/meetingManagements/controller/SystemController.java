@@ -16,7 +16,7 @@ public class SystemController {
     @Value("${info.app.name:Meeting Management System}")
     private String appName;
 
-    @Value("${info.app.version:1.0.0}")
+    @Value("${info.app.version:1.5.0}")
     private String version;
 
     @Value("${info.app.builder:Vibol SEN}")

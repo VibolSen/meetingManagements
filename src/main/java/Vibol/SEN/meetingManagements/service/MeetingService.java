@@ -41,6 +41,7 @@ public class MeetingService {
     private final RoomService roomService;
     private final AuditLogService auditLogService;
     private final SystemSettingService systemSettingService;
+    private final EmailNotificationService emailNotificationService;
 
     @Transactional(readOnly = true)
     public List<MeetingResponse> getAllMeetings() {
@@ -230,6 +231,14 @@ public class MeetingService {
                 : "Meeting requested (pending approval): '" + savedMeeting.getTitle() + "'";
         notificationService.broadcastMeetingNotification(savedMeeting, NotificationType.CONFIRMATION, msg);
 
+        if (initialStatus == MeetingStatus.CONFIRMED) {
+            List<String> attendeeEmails = savedMeeting.getAttendees().stream()
+                    .map(a -> a.getUser().getEmail())
+                    .filter(e -> e != null && !e.isBlank())
+                    .collect(Collectors.toList());
+            emailNotificationService.sendMeetingInvitation(savedMeeting, attendeeEmails);
+        }
+
         // 7. Record Audit Log
         auditLogService.recordUserAction(
                 organizer,
@@ -342,6 +351,13 @@ public class MeetingService {
         meeting.setStatus(MeetingStatus.CONFIRMED);
         Meeting approved = meetingRepository.save(meeting);
         notificationService.broadcastMeetingNotification(approved, NotificationType.CONFIRMATION, "Meeting approved: '" + approved.getTitle() + "'");
+
+        List<String> approvedEmails = attendeeRepository.findById_MeetingId(id).stream()
+                .map(a -> a.getUser().getEmail())
+                .filter(e -> e != null && !e.isBlank())
+                .collect(Collectors.toList());
+        emailNotificationService.sendMeetingInvitation(approved, approvedEmails);
+
         auditLogService.recordSystemAction(
                 AuditActionType.APPROVE,
                 AuditEntityType.MEETING,
@@ -371,6 +387,13 @@ public class MeetingService {
         Meeting cancelled = meetingRepository.save(meeting);
         String cancelMsg = "Meeting cancelled: '" + cancelled.getTitle() + "'" + (reason != null ? " (Reason: " + reason + ")" : "");
         notificationService.broadcastMeetingNotification(cancelled, NotificationType.CANCELLATION, cancelMsg);
+
+        List<String> cancelEmails = attendeeRepository.findById_MeetingId(id).stream()
+                .map(a -> a.getUser().getEmail())
+                .filter(e -> e != null && !e.isBlank())
+                .collect(Collectors.toList());
+        emailNotificationService.sendMeetingCancellation(cancelled, cancelEmails, reason);
+
         auditLogService.recordSystemAction(
                 AuditActionType.CANCEL,
                 AuditEntityType.MEETING,
@@ -397,6 +420,61 @@ public class MeetingService {
         if (!start.isBefore(end)) {
             throw new BadRequestException("Start time must be strictly before end time");
         }
+    }
+
+    public MeetingResponse checkInMeeting(Long id) {
+        Meeting meeting = meetingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Meeting not found with ID: " + id));
+
+        if (meeting.getStatus() == MeetingStatus.CANCELLED) {
+            throw new BadRequestException("Cannot check in to a cancelled meeting");
+        }
+
+        meeting.setIsCheckedIn(true);
+        meeting.setCheckedInAt(LocalDateTime.now());
+        Meeting updated = meetingRepository.save(meeting);
+
+        auditLogService.recordSystemAction(
+                AuditActionType.UPDATE,
+                AuditEntityType.MEETING,
+                updated.getMeetingId(),
+                updated.getTitle(),
+                "Meeting presence checked in for room " + updated.getRoom().getName()
+        );
+
+        return mapToResponse(updated);
+    }
+
+    public MeetingResponse endMeetingEarly(Long id) {
+        Meeting meeting = meetingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Meeting not found with ID: " + id));
+
+        if (meeting.getStatus() == MeetingStatus.CANCELLED) {
+            throw new BadRequestException("Cannot end a cancelled meeting");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isAfter(meeting.getStartTime())) {
+            meeting.setEndTime(now);
+        }
+        meeting.setStatus(MeetingStatus.COMPLETED);
+        Meeting updated = meetingRepository.save(meeting);
+
+        // Release allocated materials back to stock
+        List<MeetingMaterial> materials = meetingMaterialRepository.findById_MeetingId(id);
+        for (MeetingMaterial mm : materials) {
+            materialService.releaseMaterialStock(mm.getMaterial().getMaterialId(), mm.getQuantityRequested());
+        }
+
+        auditLogService.recordSystemAction(
+                AuditActionType.UPDATE,
+                AuditEntityType.MEETING,
+                updated.getMeetingId(),
+                updated.getTitle(),
+                "Meeting concluded early and room " + updated.getRoom().getName() + " released"
+        );
+
+        return mapToResponse(updated);
     }
 
     public MeetingResponse mapToResponse(Meeting meeting) {
@@ -434,8 +512,12 @@ public class MeetingService {
                 .status(meeting.getStatus())
                 .startTime(meeting.getStartTime())
                 .endTime(meeting.getEndTime())
+                .isCheckedIn(Boolean.TRUE.equals(meeting.getIsCheckedIn()))
+                .checkedInAt(meeting.getCheckedInAt())
                 .createdAt(meeting.getCreatedAt())
                 .updatedAt(meeting.getUpdatedAt())
+                .seriesId(meeting.getRecurringSeries() != null ? meeting.getRecurringSeries().getSeriesId() : null)
+                .recurrenceType(meeting.getRecurringSeries() != null ? meeting.getRecurringSeries().getRecurrenceType() : null)
                 .organizer(userService.mapToDTO(meeting.getOrganizer()))
                 .room(roomService.mapToResponse(meeting.getRoom()))
                 .attendees(attendeeResponses)

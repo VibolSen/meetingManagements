@@ -22,6 +22,7 @@ import java.util.List;
 public class MeetingController {
 
     private final MeetingService meetingService;
+    private final Vibol.SEN.meetingManagements.service.RecurringMeetingService recurringMeetingService;
 
     @GetMapping
     public ResponseEntity<List<MeetingResponse>> getAllMeetings() {
@@ -56,6 +57,18 @@ public class MeetingController {
         return new ResponseEntity<>(meetingService.createMeeting(request), HttpStatus.CREATED);
     }
 
+    @PostMapping("/recurring/preview")
+    public ResponseEntity<Vibol.SEN.meetingManagements.dto.RecurringPreviewResponse> previewRecurrence(
+            @Valid @RequestBody Vibol.SEN.meetingManagements.dto.RecurringMeetingRequest request) {
+        return ResponseEntity.ok(recurringMeetingService.previewRecurrence(request));
+    }
+
+    @PostMapping("/recurring")
+    public ResponseEntity<List<MeetingResponse>> createRecurringMeeting(
+            @Valid @RequestBody Vibol.SEN.meetingManagements.dto.RecurringMeetingRequest request) {
+        return new ResponseEntity<>(recurringMeetingService.createRecurringSeries(request), HttpStatus.CREATED);
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<MeetingResponse> updateMeeting(@PathVariable Long id, @Valid @RequestBody MeetingUpdateRequest request) {
         return ResponseEntity.ok(meetingService.updateMeeting(id, request));
@@ -80,5 +93,15 @@ public class MeetingController {
             @RequestParam AttendeeResponseStatus status) {
         meetingService.updateAttendeeStatus(id, userId, status);
         return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/{id}/check-in")
+    public ResponseEntity<MeetingResponse> checkInMeeting(@PathVariable Long id) {
+        return ResponseEntity.ok(meetingService.checkInMeeting(id));
+    }
+
+    @PatchMapping("/{id}/end-early")
+    public ResponseEntity<MeetingResponse> endMeetingEarly(@PathVariable Long id) {
+        return ResponseEntity.ok(meetingService.endMeetingEarly(id));
     }
 }

@@ -53,36 +53,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        String cleanEmail = request.getEmail().trim().toLowerCase();
-
-        if (userRepository.existsByEmail(cleanEmail)) {
-            throw new BadRequestException("User with email '" + cleanEmail + "' already exists");
-        }
-
-        Department department = null;
-        if (request.getDepartmentId() != null) {
-            department = departmentRepository.findById(request.getDepartmentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Department not found with ID: " + request.getDepartmentId()));
-        }
-
-        User user = User.builder()
-                .name(request.getName().trim())
-                .email(cleanEmail)
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole())
-                .department(department)
-                .build();
-
-        User saved = userRepository.save(user);
-
-        String token = tokenProvider.generateToken(saved.getUserId(), saved.getEmail(), saved.getRole());
-        UserDTO userDTO = userService.getUserById(saved.getUserId());
-
-        return new ResponseEntity<>(AuthResponse.builder()
-                .token(token)
-                .tokenType("Bearer")
-                .user(userDTO)
-                .build(), HttpStatus.CREATED);
+        throw new BadRequestException("Public account registration is disabled. Company accounts must be provisioned by a system administrator.");
     }
 
     @GetMapping("/me")

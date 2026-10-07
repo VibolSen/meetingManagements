@@ -2,17 +2,21 @@ package Vibol.SEN.meetingManagements.controller;
 
 import Vibol.SEN.meetingManagements.dto.*;
 import Vibol.SEN.meetingManagements.model.NotificationTemplate;
+import Vibol.SEN.meetingManagements.model.enums.AuditActionType;
+import Vibol.SEN.meetingManagements.model.enums.AuditEntityType;
 import Vibol.SEN.meetingManagements.model.enums.NotificationType;
 import Vibol.SEN.meetingManagements.repository.NotificationTemplateRepository;
+import Vibol.SEN.meetingManagements.service.AuditLogService;
+import Vibol.SEN.meetingManagements.service.SystemSettingService;
 import Vibol.SEN.meetingManagements.service.TelegramService;
 import Vibol.SEN.meetingManagements.service.TemplateRenderService;
 import Vibol.SEN.meetingManagements.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -28,35 +32,98 @@ public class TelegramController {
     private final TemplateRenderService templateRenderService;
     private final NotificationTemplateRepository templateRepository;
     private final UserService userService;
-
-    @Value("${telegram.bot.username:MMS_Meeting_Alert_Bot}")
-    private String botUsername;
-
-    @Value("${telegram.bot.enabled:true}")
-    private boolean botEnabled;
-
-    @Value("${telegram.bot.default-chat-id:1035574371}")
-    private String defaultChatId;
-
-    @Value("${telegram.reminder.default-minutes:10}")
-    private int defaultReminderMinutes;
+    private final SystemSettingService systemSettingService;
+    private final AuditLogService auditLogService;
 
     @GetMapping("/status")
     public ResponseEntity<TelegramStatusResponse> getStatus() {
         return ResponseEntity.ok(TelegramStatusResponse.builder()
-                .botEnabled(botEnabled)
-                .botUsername(botUsername)
-                .defaultChatId(defaultChatId)
-                .defaultReminderMinutes(defaultReminderMinutes)
-                .botLink("https://t.me/" + botUsername)
+                .botEnabled(telegramService.isBotEnabled())
+                .botUsername(telegramService.getBotUsername())
+                .defaultChatId(telegramService.getDefaultChatId())
+                .defaultReminderMinutes(telegramService.getDefaultReminderMinutes())
+                .botLink("https://t.me/" + telegramService.getBotUsername())
                 .build());
+    }
+
+    @GetMapping("/config")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TelegramConfigResponse> getConfig() {
+        String token = telegramService.getBotToken();
+        boolean hasToken = token != null && !token.isBlank();
+        String maskedToken = hasToken ? telegramService.maskToken(token) : "";
+
+        return ResponseEntity.ok(TelegramConfigResponse.builder()
+                .botEnabled(telegramService.isBotEnabled())
+                .botTokenMasked(maskedToken)
+                .hasToken(hasToken)
+                .botUsername(telegramService.getBotUsername())
+                .defaultChatId(telegramService.getDefaultChatId())
+                .defaultReminderMinutes(telegramService.getDefaultReminderMinutes())
+                .botLink("https://t.me/" + telegramService.getBotUsername())
+                .build());
+    }
+
+    @PutMapping("/config")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TelegramConfigResponse> updateConfig(
+            @Valid @RequestBody TelegramConfigUpdateRequest request,
+            Authentication authentication
+    ) {
+        String author = (authentication != null && authentication.getName() != null)
+                ? authentication.getName()
+                : "ADMIN";
+
+        if (request.getBotToken() != null && !request.getBotToken().isBlank() && !request.getBotToken().contains("••••")) {
+            systemSettingService.updateSetting("notification.telegram_bot_token", request.getBotToken().trim(), author);
+        }
+        if (request.getBotUsername() != null && !request.getBotUsername().isBlank()) {
+            systemSettingService.updateSetting("notification.telegram_bot_username", request.getBotUsername().trim().replace("@", ""), author);
+        }
+        if (request.getDefaultChatId() != null && !request.getDefaultChatId().isBlank()) {
+            systemSettingService.updateSetting("notification.telegram_default_chat_id", request.getDefaultChatId().trim(), author);
+        }
+        if (request.getBotEnabled() != null) {
+            systemSettingService.updateSetting("notification.telegram_enabled", String.valueOf(request.getBotEnabled()), author);
+        }
+        if (request.getDefaultReminderMinutes() != null) {
+            systemSettingService.updateSetting("notification.default_lead_minutes", String.valueOf(request.getDefaultReminderMinutes()), author);
+        }
+
+        try {
+            auditLogService.recordLog(
+                    null,
+                    author,
+                    author + "@meetinghub.internal",
+                    AuditActionType.UPDATE,
+                    AuditEntityType.SYSTEM,
+                    null,
+                    "Telegram Bot Gateway Settings",
+                    "Updated Telegram Bot Token, username, broadcast channel, or enabled status",
+                    "127.0.0.1"
+            );
+        } catch (Exception auditEx) {
+            log.warn("Failed to record audit log for Telegram config update: {}", auditEx.getMessage());
+        }
+
+        return getConfig();
+    }
+
+    @PostMapping("/validate-token")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TelegramValidationResponse> validateToken(
+            @RequestBody(required = false) Map<String, String> request
+    ) {
+        String token = (request != null) ? request.get("token") : null;
+        TelegramValidationResponse result = telegramService.validateToken(token);
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/test")
     public ResponseEntity<Map<String, Object>> sendTestMessage(@RequestBody(required = false) TelegramTestRequest request) {
         String targetChatId = (request != null && request.getChatId() != null && !request.getChatId().isBlank())
                 ? request.getChatId().trim()
-                : defaultChatId;
+                : telegramService.getDefaultChatId();
 
         if (request != null && request.getCustomMessage() != null && !request.getCustomMessage().isBlank()) {
             telegramService.sendMessage(targetChatId, request.getCustomMessage());

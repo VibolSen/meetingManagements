@@ -23,7 +23,7 @@ public class SystemSetting {
     @Column(name = "setting_key", nullable = false, length = 100)
     private String settingKey;
 
-    @NotBlank(message = "Setting value is required")
+    @NotNull(message = "Setting value is required")
     @Column(name = "setting_value", nullable = false, columnDefinition = "TEXT")
     private String settingValue;
 

@@ -3,15 +3,12 @@ package Vibol.SEN.meetingManagements.controller;
 import Vibol.SEN.meetingManagements.dto.*;
 import Vibol.SEN.meetingManagements.exception.BadRequestException;
 import Vibol.SEN.meetingManagements.exception.ResourceNotFoundException;
-import Vibol.SEN.meetingManagements.model.Department;
 import Vibol.SEN.meetingManagements.model.User;
-import Vibol.SEN.meetingManagements.repository.DepartmentRepository;
 import Vibol.SEN.meetingManagements.repository.UserRepository;
 import Vibol.SEN.meetingManagements.security.JwtTokenProvider;
 import Vibol.SEN.meetingManagements.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,7 +20,6 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final UserRepository userRepository;
-    private final DepartmentRepository departmentRepository;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;

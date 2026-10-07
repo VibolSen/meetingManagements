@@ -2,7 +2,6 @@ package Vibol.SEN.meetingManagements.service;
 
 import Vibol.SEN.meetingManagements.dto.SystemSettingResponse;
 import Vibol.SEN.meetingManagements.dto.SystemSettingUpdateRequest;
-import Vibol.SEN.meetingManagements.exception.ResourceNotFoundException;
 import Vibol.SEN.meetingManagements.model.SystemSetting;
 import Vibol.SEN.meetingManagements.model.enums.SettingCategory;
 import Vibol.SEN.meetingManagements.model.enums.SettingDataType;
@@ -29,6 +28,7 @@ public class SystemSettingService {
     @PostConstruct
     public void init() {
         initDefaultSettingsIfEmpty();
+        ensureTelegramSettingsExist();
         reloadCache();
     }
 
@@ -41,6 +41,11 @@ public class SystemSettingService {
     public String getString(String key, String defaultValue) {
         SystemSetting s = cache.get(key);
         return (s != null && s.getSettingValue() != null) ? s.getSettingValue() : defaultValue;
+    }
+
+    public String getSettingValue(String key) {
+        SystemSetting s = cache.get(key);
+        return (s != null && s.getSettingValue() != null) ? s.getSettingValue() : null;
     }
 
     public boolean getBoolean(String key, boolean defaultValue) {
@@ -89,9 +94,18 @@ public class SystemSettingService {
 
     public SystemSettingResponse updateSetting(String key, String value, String updatedBy) {
         SystemSetting setting = systemSettingRepository.findById(key)
-                .orElseThrow(() -> new ResourceNotFoundException("Setting not found with key: " + key));
+                .orElseGet(() -> {
+                    log.info("System setting [{}] not found; initializing new configuration entry.", key);
+                    return SystemSetting.builder()
+                            .settingKey(key)
+                            .category(SettingCategory.NOTIFICATIONS)
+                            .dataType(SettingDataType.STRING)
+                            .displayName(key)
+                            .isPublic(false)
+                            .build();
+                });
 
-        setting.setSettingValue(value);
+        setting.setSettingValue(value != null ? value : "");
         setting.setUpdatedBy(updatedBy != null ? updatedBy : "ADMIN");
         SystemSetting saved = systemSettingRepository.save(setting);
         cache.put(saved.getSettingKey(), saved);
@@ -125,6 +139,36 @@ public class SystemSettingService {
     public void initDefaultSettingsIfEmpty() {
         if (systemSettingRepository.count() == 0) {
             seedDefaultSettings("SYSTEM_INIT");
+        }
+    }
+
+    public void ensureTelegramSettingsExist() {
+        ensureSetting("notification.telegram_enabled", "true", SettingDataType.BOOLEAN,
+                "Enable Telegram Bot Notifications", "Global toggle for multi-channel Telegram automated alerts.", true);
+        ensureSetting("notification.telegram_bot_token", "", SettingDataType.STRING,
+                "Telegram Bot Token", "Telegram Bot Token obtained from @BotFather for dispatching automated alerts.", false);
+        ensureSetting("notification.telegram_bot_username", "MMS_Meeting_Alert_Bot", SettingDataType.STRING,
+                "Telegram Bot Username", "Telegram Bot Username (without @) for invitations and deep links.", true);
+        ensureSetting("notification.telegram_default_chat_id", "1035574371", SettingDataType.STRING,
+                "Telegram Default Broadcast Chat ID", "Default Telegram chat ID or channel ID for broadcast notifications.", true);
+        ensureSetting("notification.default_lead_minutes", "10", SettingDataType.NUMBER,
+                "Default Reminder Lead Time (Minutes)", "Default time prior to meeting start when reminder alerts are dispatched.", true);
+    }
+
+    private void ensureSetting(String key, String defaultValue, SettingDataType type, String displayName, String description, boolean isPublic) {
+        if (!systemSettingRepository.existsById(key)) {
+            SystemSetting s = SystemSetting.builder()
+                    .settingKey(key)
+                    .settingValue(defaultValue)
+                    .category(SettingCategory.NOTIFICATIONS)
+                    .dataType(type)
+                    .displayName(displayName)
+                    .description(description)
+                    .isPublic(isPublic)
+                    .updatedBy("SYSTEM_INIT")
+                    .build();
+            systemSettingRepository.save(s);
+            log.info("Initialized missing notification setting [{}]", key);
         }
     }
 
@@ -274,6 +318,36 @@ public class SystemSettingService {
                         .dataType(SettingDataType.BOOLEAN)
                         .displayName("Enable Telegram Bot Notifications")
                         .description("Global toggle for multi-channel Telegram automated alerts.")
+                        .isPublic(true)
+                        .updatedBy(author)
+                        .build(),
+                SystemSetting.builder()
+                        .settingKey("notification.telegram_bot_token")
+                        .settingValue("")
+                        .category(SettingCategory.NOTIFICATIONS)
+                        .dataType(SettingDataType.STRING)
+                        .displayName("Telegram Bot Token")
+                        .description("Telegram Bot Token obtained from @BotFather for dispatching automated alerts.")
+                        .isPublic(false)
+                        .updatedBy(author)
+                        .build(),
+                SystemSetting.builder()
+                        .settingKey("notification.telegram_bot_username")
+                        .settingValue("MMS_Meeting_Alert_Bot")
+                        .category(SettingCategory.NOTIFICATIONS)
+                        .dataType(SettingDataType.STRING)
+                        .displayName("Telegram Bot Username")
+                        .description("Telegram Bot Username (without @) for invitations and deep links.")
+                        .isPublic(true)
+                        .updatedBy(author)
+                        .build(),
+                SystemSetting.builder()
+                        .settingKey("notification.telegram_default_chat_id")
+                        .settingValue("1035574371")
+                        .category(SettingCategory.NOTIFICATIONS)
+                        .dataType(SettingDataType.STRING)
+                        .displayName("Telegram Default Broadcast Chat ID")
+                        .description("Default Telegram chat ID or channel ID for broadcast notifications.")
                         .isPublic(true)
                         .updatedBy(author)
                         .build(),

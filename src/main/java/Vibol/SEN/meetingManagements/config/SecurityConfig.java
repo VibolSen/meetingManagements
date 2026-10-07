@@ -66,8 +66,9 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**", "/error").permitAll()
 
                         // Role-Based Endpoints: Admin Only operations
-                        .requestMatchers(HttpMethod.POST, "/api/rooms/**", "/api/materials/**", "/api/staff/**", "/api/users/**", "/api/departments/**", "/api/telegram/templates/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/rooms/**", "/api/materials/**", "/api/staff/**", "/api/users/**", "/api/departments/**", "/api/telegram/templates/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/rooms/**", "/api/materials/**", "/api/staff/**", "/api/users/**", "/api/departments/**", "/api/telegram/templates/**", "/api/telegram/validate-token").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/rooms/**", "/api/materials/**", "/api/staff/**", "/api/users/**", "/api/departments/**", "/api/telegram/templates/**", "/api/telegram/config").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/telegram/config").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/rooms/**", "/api/materials/**", "/api/staff/**", "/api/users/**", "/api/departments/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/meetings/*/approve", "/api/users/**", "/api/issues/*/status").hasRole("ADMIN")
 
